@@ -1,11 +1,11 @@
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/leizhu/incidents_tenant/logutil"
-	"golang.org/x/net/context"
 	elastic "gopkg.in/olivere/elastic.v5"
 	"io/ioutil"
 	"os"
@@ -59,17 +59,17 @@ func (tc TenantController) es_client(index string) (*elastic.Client, context.Con
 	client, err := elastic.NewClient(elastic.SetURL(tc.ElasticsearchURL))
 	if err != nil {
 		log.Error("Can not create es client: " + err.Error())
-		return nil, nil, errors.New(fmt.Sprintln("Can not create es client: ", err))
+		return nil, context.TODO(), errors.New(fmt.Sprintln("Can not create es client: ", err))
 	}
 	info, code, err := client.Ping(tc.ElasticsearchURL).Do(ctx)
 	if err != nil {
 		log.Error("Elasticsearch returned with code %d and version %s", code, info.Version.Number)
-		return nil, nil, errors.New(fmt.Sprintln("Elasticsearch returned with code %d and version %s", code, info.Version.Number))
+		return nil, context.TODO(), errors.New(fmt.Sprintln("Elasticsearch returned with code %d and version %s", code, info.Version.Number))
 	}
 	return client, ctx, nil
 }
 
-func (tc TenantController) create_tenant(index string, client *elastic.Client, ctx context.Context) {
+func (tc TenantController) create_tenant(ctx context.Context, index string, client *elastic.Client) {
 	log.Info("Creating index " + index)
 	createIndex, err := client.CreateIndex(index).Body(tc.IndexConfig).Do(ctx)
 	if err != nil {
@@ -83,7 +83,7 @@ func (tc TenantController) create_tenant(index string, client *elastic.Client, c
 	log.Info("Index is created")
 }
 
-func (tc TenantController) remove_tenant(index string, client *elastic.Client, ctx context.Context) {
+func (tc TenantController) remove_tenant(ctx context.Context, index string, client *elastic.Client) {
 	log.Info("Deleting index " + index)
 	indexExists, err := client.IndexExists(index).Do(ctx)
 	if err != nil {
@@ -112,8 +112,8 @@ func (tc TenantController) Operate() {
 		return
 	}
 	if tc.Operation == "create" {
-		tc.create_tenant(es_index, client, ctx)
+		tc.create_tenant(ctx, es_index, client)
 	} else {
-		tc.remove_tenant(es_index, client, ctx)
+		tc.remove_tenant(ctx, es_index, client)
 	}
 }
